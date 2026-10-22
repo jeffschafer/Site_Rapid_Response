@@ -6,6 +6,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 jobs:
   native-mac:
     strategy:
@@ -22,10 +23,17 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4, verified 2026-10-22
         with:
           persist-credentials: false
+      - name: Reuse verified native PHP builds
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4, verified 2026-10-22
+        with:
+          name: php-macos-${{ matrix.architecture }}
+          github-token: ${{ github.token }}
+          run-id: 39863269612
+          path: ${{ runner.temp }}/php-macos-fixtures
       - name: Test stock Mac tools and real PHP builds
         env:
           EXPECTED_ARCHITECTURE: ${{ matrix.architecture }}
-        run: python3 .github/php-macos/test_native.py --artifacts "$RUNNER_TEMP/php-macos-results"
+        run: python3 .github/php-macos/test_native.py --artifacts "$RUNNER_TEMP/php-macos-results" --reuse-fixtures "$RUNNER_TEMP/php-macos-fixtures"
       - name: Save test evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4, verified 2026-10-22

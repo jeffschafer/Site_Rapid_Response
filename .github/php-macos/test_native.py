@@ -51,11 +51,11 @@ def extract_payloads(candidate, work):
             marker=lines[index].split(' ',2)[2]; end=lines.index(marker,index+1)
             source='\n'.join(lines[index+1:end]).replace('{{','{')+'\n'
             name=re.search(r'work"}/([^"/]+)',lines[end+1])[1]
-            assert name in ['scan-macos.sh','mac-find.sh','mac-lock.zsh','mac-run-bounded.zsh','php-detect.yar']
+            assert name in ['scan-macos.sh','mac-find.sh','mac-lock.zsh','mac-run-bounded.zsh','php-detect.yar','mac-read-header.sh']
             (work/name).write_text(source,encoding='utf-8',newline='\n')
             count+=1;index=end+1
         else:index+=1
-    assert count==5
+    assert count==6
 
 
 def check_process_helpers(root,work):
@@ -91,8 +91,63 @@ def check_process_helpers(root,work):
     before=scanner.read_bytes();run([*args,'0'],allowed=(2,));assert scanner.read_bytes()==before
 
 
+def check_header_worker(root,work):
+    """Test the exact embedded client functions with every possible byte value."""
+    source=(work/'scan-macos.sh').read_text()
+    client='header_pid=\n'+source.split('header_pid=\n',1)[1].split('finished=0 find_pid=',1)[0]
+    folder=root/'header-worker-test';folder.mkdir();folder.chmod(0o700)
+    shutil.copyfile(work/'mac-read-header.sh',folder/'mac-read-header.sh')
+    requests=bytearray()
+    for index in range(256):
+        data=bytes((index+offset)%256 for offset in range(32))
+        file=folder/('case-'+str(index));file.write_bytes(data)
+        requests+=os.fsencode(file)+b'\0'+b'32\0'+data[:20].hex().encode()+b'\0'
+    (folder/'requests').write_bytes(requests)
+    (folder/'link').symlink_to(folder/'case-0')
+    script='set -eo pipefail\nexport LC_ALL=C\nwork=$1\n'+client+'''
+trap stop_header_worker EXIT
+while IFS= read -r -d '' file && IFS= read -r -d '' size && IFS= read -r -d '' expected; do
+    read_header "$file" "$size"
+    [[ $header = "$expected" ]]
+done <"$work/requests"
+blocked=$header_pid
+kill -STOP "$blocked"
+if read_header "$work/case-0" 32; then exit 20; fi
+if kill -0 "$blocked" 2>/dev/null; then exit 21; fi
+read_header "$work/case-0" 32
+if read_header "$work/link" 32; then exit 22; fi
+read_header "$work/case-255" 32
+last=$header_pid
+stop_header_worker
+if kill -0 "$last" 2>/dev/null; then exit 23; fi
+'''
+    (folder/'client.sh').write_text(script)
+    run(['/bin/bash',folder/'client.sh',folder],timeout=15)
+
+
+def check_mount_inventory(root,work,artifacts):
+    """Exercise actual Mac root selection without traversing the whole runner."""
+    source=(work/'scan-macos.sh').read_text()
+    functions=source[source.index('timeout() {'):source.index('package_status() {')]
+    folder=root/'mount-probe';folder.mkdir();folder.chmod(0o700)
+    script=folder/'probe.sh'
+    script.write_text('set -eo pipefail\nexport LC_ALL=C PATH=/usr/bin:/bin:/usr/sbin:/sbin\n'+functions+'''
+work=$1; output=$2; include_broader_locations=0; roots=(); reasons=()
+mac_roots
+printf '%s\\0' "${roots[@]}"
+''')
+    result=run(['/bin/bash',script,work,folder],timeout=15)
+    roots=[os.fsdecode(value) for value in result.stdout.split(b'\0') if value]
+    assert roots
+    if Path('/System/Volumes/Data').is_dir():
+        assert '/System/Volumes/Data' in roots and '/' not in roots,roots
+    shutil.copyfile(folder/'scan.log',artifacts/'native-mount-inventory.txt')
+    return roots
+
+
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--artifacts',type=Path,required=True)
+    parser.add_argument('--reuse-fixtures',type=Path)
     args=parser.parse_args()
     assert platform.system()=='Darwin','This test must run on native macOS'
     architecture=platform.machine()
@@ -116,13 +171,16 @@ def main():
         run(['/bin/zsh','-f','-c','zmodload zsh/system; zmodload zsh/stat; zmodload zsh/zselect'])
         work=root/'work';work.mkdir();work.chmod(0o700)
         extract_payloads(base/'candidate.bes',work)
-        for script in ['scan-macos.sh','mac-find.sh']:
+        for script in ['scan-macos.sh','mac-find.sh','mac-read-header.sh']:
             run(['/bin/bash','-n',work/script])
         for script in ['mac-lock.zsh','mac-run-bounded.zsh']:
             run(['/bin/zsh','-fn',work/script])
         record('stock shells, modules and exact packaged payload syntax',bash=bash)
         check_process_helpers(root,work)
         record('native lock, overlap, killed-owner recovery, 0755/0777 permissions, symlink rejection and watchdog')
+        check_header_worker(root,work)
+        record('native header worker:256 byte cases, timeout recovery, symlink rejection and cleanup')
+        record('native local-volume/APFS root selection',roots=check_mount_inventory(root,work,artifacts))
         asset=next(row for row in manifest['engine_assets'] if ('aarch64' in row['name'])==(architecture=='arm64'))
         archive=root/asset['name'];fetch(asset,archive)
         with tarfile.open(archive) as packed:
@@ -160,22 +218,34 @@ def main():
         scan('transport-smoke',smoke,'TRUE')
         shutil.rmtree(smoke)
         bins={}
-        for version,source in manifest['php_sources'].items():
-            packed=root/source['filename'];fetch(source,packed)
-            with tarfile.open(packed) as bundle:bundle.extractall(root,filter='data')
-            project=root/('php-'+version)
-            env={**os.environ,'PATH':'/usr/bin:/bin:/usr/sbin:/sbin','LC_ALL':'C'}
-            result=run(['/bin/sh','./configure','--disable-all','--enable-cli','--enable-cgi','--enable-fpm','--enable-phpdbg','--without-pear'],
-                       cwd=project,timeout=300,env=env,log_path=artifacts/('configure-'+version+'.txt'))
-            print('Building PHP '+version,flush=True)
-            result=run(['/usr/bin/make','-j'+str(min(4,os.cpu_count() or 2))],cwd=project,timeout=1500,env=env,
-                       log_path=artifacts/('build-'+version+'.txt'))
-            bins[version]={name:project/relative for name,relative in {
-                'php':'sapi/cli/php','php-cgi':'sapi/cgi/php-cgi','php-fpm':'sapi/fpm/php-fpm','phpdbg':'sapi/phpdbg/phpdbg'}.items()}
-            for file in bins[version].values():assert file.is_file()
-            retained=artifacts/'fixtures'/version;retained.mkdir(parents=True)
-            for name,file in bins[version].items():shutil.copyfile(file,retained/(name+'.bin'))
-            record('real PHP '+version+' native build',files={name:sha(file) for name,file in bins[version].items()})
+        if args.reuse_fixtures:
+            pins=json.loads((base/'fixture-pins.json').read_text())
+            assert pins['run_id']==39863269612
+            report['fixture_source_run']=pins['run_id']
+            for version,files in pins['architectures'][architecture].items():
+                bins[version]={}
+                for name,digest in files.items():
+                    file=args.reuse_fixtures/'fixtures'/version/(name+'.bin')
+                    assert file.is_file() and not file.is_symlink() and sha(file)==digest
+                    bins[version][name]=file
+                record('verified real PHP '+version+' native build reused',files=files)
+        else:
+            for version,source in manifest['php_sources'].items():
+                packed=root/source['filename'];fetch(source,packed)
+                with tarfile.open(packed) as bundle:bundle.extractall(root,filter='data')
+                project=root/('php-'+version)
+                env={**os.environ,'PATH':'/usr/bin:/bin:/usr/sbin:/sbin','LC_ALL':'C'}
+                result=run(['/bin/sh','./configure','--disable-all','--enable-cli','--enable-cgi','--enable-fpm','--enable-phpdbg','--without-pear'],
+                           cwd=project,timeout=300,env=env,log_path=artifacts/('configure-'+version+'.txt'))
+                print('Building PHP '+version,flush=True)
+                result=run(['/usr/bin/make','-j'+str(min(4,os.cpu_count() or 2))],cwd=project,timeout=1500,env=env,
+                           log_path=artifacts/('build-'+version+'.txt'))
+                bins[version]={name:project/relative for name,relative in {
+                    'php':'sapi/cli/php','php-cgi':'sapi/cgi/php-cgi','php-fpm':'sapi/fpm/php-fpm','phpdbg':'sapi/phpdbg/phpdbg'}.items()}
+                for file in bins[version].values():assert file.is_file()
+                retained=artifacts/'fixtures'/version;retained.mkdir(parents=True)
+                for name,file in bins[version].items():shutil.copyfile(file,retained/(name+'.bin'))
+                record('real PHP '+version+' native build',files={name:sha(file) for name,file in bins[version].items()})
         scopes={}
         def scope(name, files):
             folder=root/name;folder.mkdir()

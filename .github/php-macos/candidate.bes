@@ -263,7 +263,7 @@ delete "{parameter "work"}/php-detect.yar"
 move __createfile "{parameter "work"}/php-detect.yar"
 continue if {sha256 of file "php-detect.yar" of folder (parameter "work") = "0f68f1276f3d50db3dcba06fd1d8089e157fbc8e60bcca49ac1e7b2dde664615"}
 delete __createfile
-createfile until END_PHP_YARA_7ebda90ac698f02d
+createfile until END_PHP_YARA_ae5a853fdaa4b1aa
 #!/bin/bash
 # macOS PHP discovery with stock Bash 3.2, BSD utilities and stock zsh modules.
 # No Python, jq, GNU tools, compiler or PHP execution required.
@@ -402,10 +402,50 @@ work=$(dirname -- "$engine")
 [[ -d $work &amp;&amp; ! -L $work &amp;&amp; $(stat -f %u "$work") = "$EUID" ]] || {{ echo 'Unsafe or missing scan workspace' &gt;&amp;2; exit 2; }
 mode=$(stat -f %Lp "$work"); (( (8#$mode &amp; 0022)==0 )) || {{ echo 'Scan workspace is writable by another account' &gt;&amp;2; exit 2; }
 started=$(date -u '+%Y-%m-%d %H:%M:%S UTC'); start_seconds=$SECONDS
+# Persistent header worker: one process per scan instead of several per file.
+# The request/response FIFOs are private attempt-owned objects. Opening both
+# ends in the parent avoids startup/EOF races; read -t applies to the FIFO.
+header_pid=
+stop_header_worker() {{
+    if [[ -n $header_pid ]]; then
+        kill -KILL "$header_pid" 2&gt;/dev/null || :
+        wait "$header_pid" 2&gt;/dev/null || :
+        header_pid=
+    fi
+    exec 6&gt;&amp;- 7&gt;&amp;-
+}
+start_header_worker() {{
+    local leaf
+    for leaf in header-request.pipe header-response.pipe; do
+        [[ ! -L $work/$leaf ]] || return 1
+        if [[ -e $work/$leaf ]]; then [[ -p $work/$leaf ]] || return 1; rm -f -- "$work/$leaf"; fi
+        mkfifo -- "$work/$leaf" || return 1
+    done
+    exec 7&lt;&gt;"$work/header-request.pipe" 6&lt;&gt;"$work/header-response.pipe"
+    /bin/bash "$work/mac-read-header.sh" "$work/header-request.pipe" "$work/header-response.pipe" &amp;
+    header_pid=$!
+}
+read_header() {{
+    local reply expected_size=$2 hexadecimal_pattern='^[0-9a-f]+$'
+    local expected_length=$(( (expected_size&lt;20 ? expected_size : 20)*2 ))
+    header=
+    if [[ -z $header_pid ]]; then start_header_worker || return 1; fi
+    if printf '%s\0' "$1" &gt;&amp;7 &amp;&amp; IFS= read -r -d '' -t 2 reply &lt;&amp;6; then
+        if [[ $reply = OK:* ]]; then
+            header=${{reply#OK:}
+            if [[ $header =~ $hexadecimal_pattern ]] &amp;&amp; ((${{#header}==expected_length)); then return 0; fi
+        fi
+    fi
+    # Only this read-only attempt-owned worker is terminated, never an app.
+    stop_header_worker
+    return 1
+}
+
 finished=0 find_pid= scan_pid=
 failure() {{
     result=$?
     trap - EXIT
+    stop_header_worker
     if [[ -n $find_pid ]]; then kill "$find_pid" 2&gt;/dev/null || :; wait "$find_pid" 2&gt;/dev/null || :; fi
     if [[ -n $scan_pid ]]; then kill "$scan_pid" 2&gt;/dev/null || :; wait "$scan_pid" 2&gt;/dev/null || :; fi
     if (( !finished )); then
@@ -533,10 +573,11 @@ while IFS= read -r -d '' -t "$enumeration_seconds" path; do
     [[ $size =~ $mac_regex_5 &amp;&amp; $file_flags =~ $mac_regex_5 ]] || {{ read_errors=$((read_errors+1)); continue; }
     (( (file_flags &amp; 0x40000000)==0 )) || continue
     if ((size&gt;=max_file_mb*1048576)); then size_skipped=$((size_skipped+1)); continue; fi
+    ((size&gt;0)) || continue
     # Stat/find never opens devices or FIFOs. Recheck after enumeration before
     # reading, because an application can replace its file during a scan.
     [[ -f $path &amp;&amp; ! -L $path ]] || continue
-    if ! header=$(timeout -k 1 2 od -An -tx1 -N20 -- "$path" 2&gt;/dev/null); then
+    if ! read_header "$path" "$size"; then
         [[ -e $path ]] &amp;&amp; read_errors=$((read_errors+1)); continue
     fi
     header=${{header//[[:space:]]/}
@@ -572,6 +613,7 @@ while IFS= read -r -d '' -t "$enumeration_seconds" path; do
     printf '%s\n' "$scan_path" &gt;&gt;"$list"
     candidates=$((candidates+1)); bytes=$((bytes+size))
 done &lt;"$fifo"
+stop_header_worker
 if ((${{#reasons[@]})); then kill "$find_pid" 2&gt;/dev/null || :; fi
 find_rc=0; wait "$find_pid" || find_rc=$?; find_pid=
 if ((find_rc!=0)); then reasons+=('file search incomplete'); fi
@@ -599,6 +641,7 @@ valid_utf8() {{
     local text=$1 i byte remaining=0 low=128 high=191
     for ((i=0;i&lt;${{#text};i++)); do
         printf -v byte '%d' "'${{text:i:1}"
+        byte=$((byte &amp; 255))
         if ((remaining)); then
             ((byte&gt;=low &amp;&amp; byte&lt;=high)) || return 1
             remaining=$((remaining-1)); low=128; high=191
@@ -707,10 +750,10 @@ if ((vulnerable+vendor_unverified+unknown&gt;100)); then last_scan+=' (first 100
 mv -f -- "$output/summary.txt.new" "$output/summary.txt"
 finished=1
 if ((${{#reasons[@]})); then exit 10; fi
-END_PHP_YARA_7ebda90ac698f02d
+END_PHP_YARA_ae5a853fdaa4b1aa
 delete "{parameter "work"}/scan-macos.sh"
 move __createfile "{parameter "work"}/scan-macos.sh"
-continue if {sha256 of file "scan-macos.sh" of folder (parameter "work") = "7ebda90ac698f02d15f6abf88d5284de585f4c6dfd94b291cfca813a951d2bb0"}
+continue if {sha256 of file "scan-macos.sh" of folder (parameter "work") = "ae5a853fdaa4b1aa1e0513393c45ae19a9206210e8537ee34bfbee1212aa26d4"}
 delete __createfile
 createfile until END_PHP_YARA_40d8859de3217c09
 #!/bin/bash
@@ -875,6 +918,40 @@ END_PHP_YARA_b57de2beabea66fa
 delete "{parameter "work"}/mac-run-bounded.zsh"
 move __createfile "{parameter "work"}/mac-run-bounded.zsh"
 continue if {sha256 of file "mac-run-bounded.zsh" of folder (parameter "work") = "b57de2beabea66fa73511c2f1bc3f96da9e4f118c67f7e148ccf584853132a81"}
+delete __createfile
+createfile until END_PHP_YARA_49f6302bed220249
+#!/bin/bash
+# One read-only worker serves all header requests. Bash builtins preserve every
+# byte, including NUL/newline/high bytes, without starting od for every file.
+# The parent bounds each FIFO response and kills/restarts a stalled worker.
+set -eo pipefail
+export LC_ALL=C PATH=/usr/bin:/bin:/usr/sbin:/sbin
+umask 077
+(($#==2)) || exit 2
+[[ $1 = /* &amp;&amp; $2 = /* &amp;&amp; -p $1 &amp;&amp; -p $2 &amp;&amp; ! -L $1 &amp;&amp; ! -L $2 ]] || exit 2
+exec 7&lt;"$1" 6&gt;"$2"
+while IFS= read -r -d '' path &lt;&amp;7; do
+    header=; status=ERROR
+    if [[ -f $path &amp;&amp; ! -L $path ]]; then
+        if {{
+            for ((index=0;index&lt;20;index++)); do
+                byte=
+                if ! IFS= read -r -n 1 -d '' byte &lt;&amp;8; then break; fi
+                # Bash3.2 can expose bytes &gt;=128 as signed char values.
+                printf -v octet '%d' "'$byte"
+                printf -v hexadecimal '%02x' "$((octet &amp; 255))"
+                header+=$hexadecimal
+            done
+        } 8&lt;"$path" 2&gt;/dev/null; then
+            [[ -z $header ]] || status=OK
+        fi
+    fi
+    printf '%s:%s\0' "$status" "$header" &gt;&amp;6 || exit 0
+done
+END_PHP_YARA_49f6302bed220249
+delete "{parameter "work"}/mac-read-header.sh"
+move __createfile "{parameter "work"}/mac-read-header.sh"
+continue if {sha256 of file "mac-read-header.sh" of folder (parameter "work") = "49f6302bed220249310d86d221ba0a08a1d56461530d12696b7caace8b07e17a"}
 wait /bin/zsh -f "{parameter "work"}/mac-lock.zsh" "{parameter "output"}/scan.lock" "{parameter "work"}/scan-macos.sh" --engine "{parameter "work"}/yr" --engine-sha256 {parameter "macEngineSha"} --rules "{parameter "work"}/php-detect.yar" --output "{parameter "output"}" --archive "{pathname of download file (parameter "macArchive")}" --archive-sha256 {parameter "macArchiveSha"} --enumeration-seconds {parameter "PHPEnumerationSeconds"} --scan-seconds {parameter "PHPScanSeconds"} --max-files {parameter "PHPMaxFiles"} --candidate-gb {parameter "PHPCandidateGB"} --max-file-mb {parameter "PHPMaxFileMB"} --cpu-limit {parameter "PHPCpuLimit"} --exclude-directories-hex "{parameter "PHPExcludeDirectoriesHex"}" --include-build-text {parameter "PHPIncludeBuildText"} --include-broader-locations {parameter "PHPIncludeBroaderLocations"} --include-nonstandard-names {parameter "PHPIncludeNonstandardNames"}
 parameter "scanExit" = "{exit code of action}"
 folder delete "{parameter "work"}"

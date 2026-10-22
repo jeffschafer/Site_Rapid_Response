@@ -1,0 +1,34 @@
+{
+  "run_id": 39863269612,
+  "commit": "a901c9c261fe9d40dfe33aec8f7f54f153204d9a",
+  "architectures": {
+    "arm64": {
+      "8.5.11": {
+        "php": "7823e3c2e58f1e00d2a882cc1055abc273f81cefadce30876458b87f85a33bb3",
+        "php-cgi": "5f68c7e0a22a31ff8c9f809f3b5d80a2be8117ba54bb8990c5efb79aa5ed6b66",
+        "php-fpm": "d0c5d01ab1b6feafb24d95a011adb533a981701d783dcd09c39dda172e5a96f3",
+        "phpdbg": "0c94dd0048afb086aecab66ec0e072ea63f45acd4f002a2d64dfb60cc15bcf01"
+      },
+      "8.5.12": {
+        "php": "1baf177eee7dae0bf8592c4a77b35961a3a8c6bb9b7b3fe4596e3d7e13feeb65",
+        "php-cgi": "dc39e2d59e7625696c52ad819ca73b423a238a284f1ff1ed1964b2a031bb082d",
+        "php-fpm": "68bc510445346208f687c6fc045a5103ffe8c4fd75b36638cecee75f0a4c1699",
+        "phpdbg": "734365ade6f987c882fa926f3ee31dd2894e83dca4349b9b3d7785b1f75ce534"
+      }
+    },
+    "x86_64": {
+      "8.5.11": {
+        "php": "d91fb634a71fab6f218fcf3cb2d738458517184ed42439b9701469fa33228c41",
+        "php-cgi": "358857d38a9f382f49bf6075b5b7f394aeb9b5e947237e2920bf6d25369d73ea",
+        "php-fpm": "b10b930ba4e76a34dee9b3dd44c6c53e9defa2d9dd8cd4045529a7f89ebc927b",
+        "phpdbg": "013efcfe8864f02573237c7b2b53ad17ddef54f83785efed62fe70db1e9effff"
+      },
+      "8.5.12": {
+        "php": "92fdd138577eca84d70b96360840a0bde3e23235e9c135a09caf015ead3f6d60",
+        "php-cgi": "c21415ca5a6d7b10e120f620ae6537069cb2e1fed824dceee7c3a1c591fa0ba8",
+        "php-fpm": "76a62d491f306a271d361f929094c976541c06ffca2554775dd8369ae830ddc3",
+        "phpdbg": "8a5f3372085d3a1c4ab3855eed1bc11c7a14fea580f45e13b10ad7ec5a92f0c3"
+      }
+    }
+  }
+}
