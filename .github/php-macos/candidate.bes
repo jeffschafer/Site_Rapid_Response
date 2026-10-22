@@ -263,7 +263,7 @@ delete "{parameter "work"}/php-detect.yar"
 move __createfile "{parameter "work"}/php-detect.yar"
 continue if {sha256 of file "php-detect.yar" of folder (parameter "work") = "0f68f1276f3d50db3dcba06fd1d8089e157fbc8e60bcca49ac1e7b2dde664615"}
 delete __createfile
-createfile until END_PHP_YARA_add4e1c1b6bf5caf
+createfile until END_PHP_YARA_7ebda90ac698f02d
 #!/bin/bash
 # macOS PHP discovery with stock Bash 3.2, BSD utilities and stock zsh modules.
 # No Python, jq, GNU tools, compiler or PHP execution required.
@@ -464,7 +464,7 @@ if [[ ! -f $engine ]]; then
     [[ -f $archive &amp;&amp; $(hash "$archive") = "$archive_sha256" ]] || {{ echo 'Archive hash mismatch' &gt;&amp;2; exit 2; }
     # Extract only the pinned executable to a controlled filename; no archive paths.
     tar -xOzf "$archive" yr &gt;"$engine"
-    chmod 700 -- "$engine"
+    chmod 700 "$engine"
 fi
 [[ $(hash "$engine") = "$engine_sha256" ]] || {{ echo 'Engine hash mismatch' &gt;&amp;2; exit 2; }
 prune=(/dev /net /home /Volumes/TimeMachine /private/var/vm "$output")
@@ -707,10 +707,10 @@ if ((vulnerable+vendor_unverified+unknown&gt;100)); then last_scan+=' (first 100
 mv -f -- "$output/summary.txt.new" "$output/summary.txt"
 finished=1
 if ((${{#reasons[@]})); then exit 10; fi
-END_PHP_YARA_add4e1c1b6bf5caf
+END_PHP_YARA_7ebda90ac698f02d
 delete "{parameter "work"}/scan-macos.sh"
 move __createfile "{parameter "work"}/scan-macos.sh"
-continue if {sha256 of file "scan-macos.sh" of folder (parameter "work") = "add4e1c1b6bf5cafd65b02633c816a16d56cf066960a038873571855f1412835"}
+continue if {sha256 of file "scan-macos.sh" of folder (parameter "work") = "7ebda90ac698f02d15f6abf88d5284de585f4c6dfd94b291cfca813a951d2bb0"}
 delete __createfile
 createfile until END_PHP_YARA_40d8859de3217c09
 #!/bin/bash
@@ -779,7 +779,7 @@ delete "{parameter "work"}/mac-find.sh"
 move __createfile "{parameter "work"}/mac-find.sh"
 continue if {sha256 of file "mac-find.sh" of folder (parameter "work") = "40d8859de3217c09e78a57e3a777883574c596f015fbdf06069088e5280fd597"}
 delete __createfile
-createfile until END_PHP_YARA_4173211e9bdc6b54
+createfile until END_PHP_YARA_b5cffd0a99c2e1e8
 #!/bin/zsh -f
 # macOS ships zsh/system. Its kernel lock survives exec and is released when
 # the scanner exits; there is no stale PID/directory lock to guess or delete.
@@ -803,7 +803,8 @@ done
 [[ -d $directory ]] || {{ print -u2 'Output folder must already exist'; exit 2; }
 typeset -A info
 zstat -H info -- "$directory"
-(( info[uid] == EUID &amp;&amp; (info[mode] &amp; 0022) == 0 )) || {{
+# zsh does not interpret leading-zero integers as octal by default.
+(( info[uid] == EUID &amp;&amp; (info[mode] &amp; 8#22) == 0 )) || {{
     print -u2 'Unsafe output folder ownership or permissions'; exit 2
 }
 [[ ! -L $lockfile ]] || {{ print -u2 'Symlink scan lock rejected'; exit 2; }
@@ -814,7 +815,7 @@ if [[ ! -e $lockfile ]]; then
 fi
 [[ -f $lockfile &amp;&amp; ! -L $lockfile ]] || exit 2
 zstat -H info -- "$lockfile"
-(( info[uid] == EUID &amp;&amp; info[nlink] == 1 &amp;&amp; (info[mode] &amp; 0022) == 0 )) || exit 2
+(( info[uid] == EUID &amp;&amp; info[nlink] == 1 &amp;&amp; (info[mode] &amp; 8#22) == 0 )) || exit 2
 # Older stock zsh treats -t 0 as an unlimited wait. One second bounds overlap
 # on both old and current releases without relying on newer timeout semantics.
 zsystem flock -e -t 1 -f lockfd "$lockfile" || {{
@@ -823,10 +824,10 @@ zsystem flock -e -t 1 -f lockfd "$lockfile" || {{
 [[ -f $scanner &amp;&amp; ! -L $scanner ]] || exit 2
 export PHP_SCAN_LOCK_HELD_PID=$$
 exec /bin/bash "$scanner" "$@"
-END_PHP_YARA_4173211e9bdc6b54
+END_PHP_YARA_b5cffd0a99c2e1e8
 delete "{parameter "work"}/mac-lock.zsh"
 move __createfile "{parameter "work"}/mac-lock.zsh"
-continue if {sha256 of file "mac-lock.zsh" of folder (parameter "work") = "4173211e9bdc6b5447d7e452578bb6ce01e4177bd3bf56c10281110503a2dec8"}
+continue if {sha256 of file "mac-lock.zsh" of folder (parameter "work") = "b5cffd0a99c2e1e8e106dcf79d2f0e72f85f4059651e8347bb91653a087aa0fe"}
 delete __createfile
 createfile until END_PHP_YARA_b57de2beabea66fa
 #!/bin/zsh -f

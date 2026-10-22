@@ -49,7 +49,7 @@
       "sha256": "08bc2eba2a588654ade1357174aa646b761556c862dda0678345ee29ed481209"
     }
   },
-  "candidate_sha256": "4d66e3017e65cc1549e0d9b19c921092745eb8e74b6fccaf9eab98ad23d296b0",
+  "candidate_sha256": "58b00b4a617d98f54f35e8b3a738e139e675546c874c66ac9e865c85a55c9412",
   "forum_script_sha256": "60239e3a0babd5a17f5d616ff48d2ce75b76c590142e8dca0adf42d7d89210f0",
   "forum_source_bes_sha256": "b87494a9ecd625f20eff2a545e04141b528bb2d337e395ccaa6c1c150d3604ee",
   "scope": "Native payload tests on disposable runners; no BigFix client installed."

@@ -1,8 +1,8 @@
 """Native Mac payload validation, for a disposable Intel/ARM GitHub runner.
 
 Python is a CI test driver only, never an endpoint scanner dependency. All scans
-are confined to private fixtures. No installation, sudo, security-policy change,
-PHP execution, service operation or BigFix action is performed here.
+are confined to private fixtures. The scanner does not execute PHP. There is no
+installation, sudo, security-policy change, service operation or BigFix action.
 """
 import argparse
 import hashlib
@@ -13,6 +13,7 @@ import platform
 import re
 import shutil
 import statistics
+import struct
 import subprocess
 import tarfile
 import tempfile
@@ -26,11 +27,12 @@ def sha(path):
         return hashlib.file_digest(handle,'sha256').hexdigest()
 
 
-def run(args, *, cwd=None, timeout=60, allowed=(0,), env=None):
+def run(args, *, cwd=None, timeout=60, allowed=(0,), env=None, log_path=None):
     result=subprocess.run([str(arg) for arg in args],shell=False,cwd=cwd,
                           capture_output=True,timeout=timeout,env=env)
+    if log_path:log_path.write_bytes(result.stdout+result.stderr)
     if result.returncode not in allowed:
-        raise RuntimeError(str(args[0])+' exit '+str(result.returncode)+'\n'+result.stderr[-5000:].decode(errors='replace'))
+        raise RuntimeError(str(args[0])+' exit '+str(result.returncode)+'\n'+(result.stdout+result.stderr)[-5000:].decode(errors='replace'))
     return result
 
 
@@ -82,6 +84,9 @@ def check_process_helpers(root,work):
         if owner.poll() is None:owner.kill()
         owner.communicate(timeout=5)
     run([*args,'0'])
+    root.chmod(0o755);run([*args,'0'])
+    root.chmod(0o777);run([*args,'0'],allowed=(2,))
+    root.chmod(0o700)
     (root/'test.lock').unlink();(root/'test.lock').symlink_to(scanner)
     before=scanner.read_bytes();run([*args,'0'],allowed=(2,));assert scanner.read_bytes()==before
 
@@ -104,6 +109,7 @@ def main():
     def record(name, **data):
         report['checks'].append({'name':name,**data})
         (artifacts/'report.json').write_text(json.dumps(report,indent=2)+'\n')
+        print(name,flush=True)
     try:
         bash=run(['/bin/bash','--version']).stdout.decode().splitlines()[0]
         assert '3.2.' in bash,bash
@@ -116,7 +122,7 @@ def main():
             run(['/bin/zsh','-fn',work/script])
         record('stock shells, modules and exact packaged payload syntax',bash=bash)
         check_process_helpers(root,work)
-        record('native lock, overlap, killed-owner recovery, symlink rejection and watchdog')
+        record('native lock, overlap, killed-owner recovery, 0755/0777 permissions, symlink rejection and watchdog')
         asset=next(row for row in manifest['engine_assets'] if ('aarch64' in row['name'])==(architecture=='arm64'))
         archive=root/asset['name'];fetch(asset,archive)
         with tarfile.open(archive) as packed:
@@ -124,6 +130,35 @@ def main():
             (work/'yr').write_bytes(packed.extractfile(entry).read())
         (work/'yr').chmod(0o700);assert sha(work/'yr')==asset['engine_sha256']
         record('pinned native YARA-X starts',version=run([work/'yr','--version']).stdout.decode().strip())
+        def scan(name,folder,expected,options=()):
+            output=root/('output-'+name);output.mkdir();output.chmod(0o700)
+            # Match the forum's per-run cached-archive extraction boundary.
+            # A prepared-engine-only timing would unfairly favour this draft.
+            if (work/'yr').exists():(work/'yr').unlink()
+            command=['/bin/zsh','-f',work/'mac-lock.zsh',output/'scan.lock',work/'scan-macos.sh',
+                     '--engine',work/'yr','--engine-sha256',asset['engine_sha256'],
+                     '--archive',archive,'--archive-sha256',asset['sha256'],
+                     '--rules',work/'php-detect.yar','--output',output,'--root',folder,*options]
+            started=time.monotonic()
+            try:
+                result=run(command,timeout=150,allowed=(0,10),log_path=artifacts/(name+'-process.txt'))
+            finally:
+                # Failure diagnostics must survive the private fixture cleanup.
+                for leaf in ['summary.txt','scan.log']:
+                    if (output/leaf).is_file():shutil.copyfile(output/leaf,artifacts/(name+'-'+leaf))
+            elapsed=time.monotonic()-started
+            summary=(output/'summary.txt').read_text();log=(output/'scan.log').read_text()
+            shutil.copyfile(output/'summary.txt',artifacts/(name+'-summary.txt'))
+            shutil.copyfile(output/'scan.log',artifacts/(name+'-log.txt'))
+            state=re.search(r'^DETECTED=(.*)$',summary,re.M)[1]
+            assert state==expected,(name,expected,summary,log[-3000:])
+            record(name,state=state,exit=result.returncode,seconds=elapsed)
+            return summary,elapsed
+        smoke=root/'transport-smoke';smoke.mkdir()
+        header=struct.pack('<IIIIIIII',0xfeedfacf,0x100000c if architecture=='arm64' else 0x1000007,3,2,0,0,0,0)
+        (smoke/'php').write_bytes(header+b'\0'*96+b'X-Powered-By: PHP/8.5.11\0Zend Engine v4.5\0')
+        scan('transport-smoke',smoke,'TRUE')
+        shutil.rmtree(smoke)
         bins={}
         for version,source in manifest['php_sources'].items():
             packed=root/source['filename'];fetch(source,packed)
@@ -131,13 +166,15 @@ def main():
             project=root/('php-'+version)
             env={**os.environ,'PATH':'/usr/bin:/bin:/usr/sbin:/sbin','LC_ALL':'C'}
             result=run(['/bin/sh','./configure','--disable-all','--enable-cli','--enable-cgi','--enable-fpm','--enable-phpdbg','--without-pear'],
-                       cwd=project,timeout=300,env=env)
-            (artifacts/('configure-'+version+'.txt')).write_bytes(result.stdout+result.stderr)
-            result=run(['/usr/bin/make','-j2'],cwd=project,timeout=1500,env=env)
-            (artifacts/('build-'+version+'.txt')).write_bytes(result.stdout+result.stderr)
+                       cwd=project,timeout=300,env=env,log_path=artifacts/('configure-'+version+'.txt'))
+            print('Building PHP '+version,flush=True)
+            result=run(['/usr/bin/make','-j'+str(min(4,os.cpu_count() or 2))],cwd=project,timeout=1500,env=env,
+                       log_path=artifacts/('build-'+version+'.txt'))
             bins[version]={name:project/relative for name,relative in {
                 'php':'sapi/cli/php','php-cgi':'sapi/cgi/php-cgi','php-fpm':'sapi/fpm/php-fpm','phpdbg':'sapi/phpdbg/phpdbg'}.items()}
             for file in bins[version].values():assert file.is_file()
+            retained=artifacts/'fixtures'/version;retained.mkdir(parents=True)
+            for name,file in bins[version].items():shutil.copyfile(file,retained/(name+'.bin'))
             record('real PHP '+version+' native build',files={name:sha(file) for name,file in bins[version].items()})
         scopes={}
         def scope(name, files):
@@ -151,23 +188,6 @@ def main():
         renamed=scope('renamed',{'business-service':bins['8.5.11']['php']})
         unicode=scope('unicode',{'café/php':bins['8.5.11']['php']})
         excluded=scope('excluded',{'data/php':bins['8.5.11']['php'],'data/child/php':bins['8.5.11']['php']})
-        def scan(name,folder,expected,options=()):
-            output=root/('output-'+name);output.mkdir();output.chmod(0o700)
-            # Match the forum's per-run cached-archive extraction boundary.
-            # A prepared-engine-only timing would unfairly favour this draft.
-            if (work/'yr').exists():(work/'yr').unlink()
-            command=['/bin/zsh','-f',work/'mac-lock.zsh',output/'scan.lock',work/'scan-macos.sh',
-                     '--engine',work/'yr','--engine-sha256',asset['engine_sha256'],
-                     '--archive',archive,'--archive-sha256',asset['sha256'],
-                     '--rules',work/'php-detect.yar','--output',output,'--root',folder,*options]
-            started=time.monotonic();result=run(command,timeout=150,allowed=(0,10));elapsed=time.monotonic()-started
-            summary=(output/'summary.txt').read_text();log=(output/'scan.log').read_text()
-            shutil.copyfile(output/'summary.txt',artifacts/(name+'-summary.txt'))
-            shutil.copyfile(output/'scan.log',artifacts/(name+'-log.txt'))
-            state=re.search(r'^DETECTED=(.*)$',summary,re.M)[1]
-            assert state==expected,(name,expected,summary,log[-3000:])
-            record(name,state=state,exit=result.returncode,seconds=elapsed)
-            return summary,elapsed
         for name,folder,state in [('affected',affected,'TRUE'),('patched',patched,'FALSE')]:
             summary,_=scan(name,folder,state)
             if state=='TRUE':
