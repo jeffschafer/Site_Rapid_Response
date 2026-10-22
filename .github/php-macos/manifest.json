@@ -1,0 +1,56 @@
+{
+  "engine_assets": [
+    {
+      "name": "yara-x-v1.22.0-aarch64-apple-darwin.tar.gz",
+      "sha1": "16b30fd7d7613bd0172bc197d785f1143c34f2b9",
+      "size": 8421133,
+      "url": "https://github.com/VirusTotal/yara-x/releases/download/v1.22.0/yara-x-v1.22.0-aarch64-apple-darwin.tar.gz",
+      "sha256": "79d596da5bf02205de63a1d7844a964daebc7293fa36fcb7da46c3e3c7567229",
+      "engine_sha256": "81f91471e7e786d932e80e8a74e25e0607e0c5305c370ba6238a31133fd2a05f",
+      "engine_size": 24394224,
+      "mach_o": {
+        "cpu_type": 16777228,
+        "cpu_subtype": 0,
+        "filetype": 2,
+        "minimum_macos": [
+          "11.0.0"
+        ]
+      }
+    },
+    {
+      "name": "yara-x-v1.22.0-x86_64-apple-darwin.tar.gz",
+      "sha1": "560ace0fca8543195a71d52545bef248e92854e4",
+      "size": 9476144,
+      "url": "https://github.com/VirusTotal/yara-x/releases/download/v1.22.0/yara-x-v1.22.0-x86_64-apple-darwin.tar.gz",
+      "sha256": "d059da4b91c7d7b43f6f50174a7739e3362b51f349f2ba8b33d46e3334bb3300",
+      "engine_sha256": "aec0e72e7ff4a6efe2fb90419c58f4a539bde31b6804ac24a75f625cf837510c",
+      "engine_size": 28378136,
+      "mach_o": {
+        "cpu_type": 16777223,
+        "cpu_subtype": 3,
+        "filetype": 2,
+        "minimum_macos": [
+          "10.12.0"
+        ]
+      }
+    }
+  ],
+  "php_sources": {
+    "8.5.11": {
+      "url": "https://www.php.net/distributions/php-8.5.11.tar.xz",
+      "filename": "php-8.5.11.tar.xz",
+      "size": 14469364,
+      "sha256": "d9be75c08e8c316f4c8f4194d8fbe1750a15f6a6d9d4e3fe72082abeeb800360"
+    },
+    "8.5.12": {
+      "url": "https://www.php.net/distributions/php-8.5.12.tar.xz",
+      "filename": "php-8.5.12.tar.xz",
+      "size": 14554312,
+      "sha256": "08bc2eba2a588654ade1357174aa646b761556c862dda0678345ee29ed481209"
+    }
+  },
+  "candidate_sha256": "4d66e3017e65cc1549e0d9b19c921092745eb8e74b6fccaf9eab98ad23d296b0",
+  "forum_script_sha256": "60239e3a0babd5a17f5d616ff48d2ce75b76c590142e8dca0adf42d7d89210f0",
+  "forum_source_bes_sha256": "b87494a9ecd625f20eff2a545e04141b528bb2d337e395ccaa6c1c150d3604ee",
+  "scope": "Native payload tests on disposable runners; no BigFix client installed."
+}

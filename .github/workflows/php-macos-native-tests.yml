@@ -1,0 +1,36 @@
+name: PHP macOS preview validation
+on:
+  push:
+    branches:
+      - PHP-macOS-Native-Tests-20261022
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-mac:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15-intel
+            architecture: x86_64
+          - runner: macos-15
+            architecture: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4, verified 2026-10-22
+        with:
+          persist-credentials: false
+      - name: Test stock Mac tools and real PHP builds
+        env:
+          EXPECTED_ARCHITECTURE: ${{ matrix.architecture }}
+        run: python3 .github/php-macos/test_native.py --artifacts "$RUNNER_TEMP/php-macos-results"
+      - name: Save test evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4, verified 2026-10-22
+        with:
+          name: php-macos-${{ matrix.architecture }}
+          path: ${{ runner.temp }}/php-macos-results
+          retention-days: 7
+          if-no-files-found: error
