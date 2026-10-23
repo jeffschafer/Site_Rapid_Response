@@ -313,7 +313,7 @@ delete "{parameter "work"}/php-detect.yar"
 move __createfile "{parameter "work"}/php-detect.yar"
 continue if {sha256 of file "php-detect.yar" of folder (parameter "work") = "0f68f1276f3d50db3dcba06fd1d8089e157fbc8e60bcca49ac1e7b2dde664615"}
 delete __createfile
-createfile until END_PHP_YARA_30ed8051da2e680c
+createfile until END_PHP_YARA_3eb9ad0b62bbab5b
 #!/bin/bash
 # macOS PHP discovery with stock Bash 3.2, BSD utilities and stock zsh modules.
 # No Python, jq, GNU tools, compiler or PHP execution required.
@@ -789,7 +789,8 @@ flush_header_batch() {{
     prior_stop=$discovery_stopped
     discovery_stopped=0
     filter_rc=0
-    (ulimit -f 16384; exec timeout -k 1 "$remaining" nice -n 10 "$engine" scan \
+    # timeout is the stock-zsh watchdog function on macOS, not an executable.
+    (ulimit -f 16384; timeout -k 1 "$remaining" nice -n 10 "$engine" scan \
         --compiled-rules --scan-list --threads 2 --cpu-limit "$cpu_limit" --timeout "$remaining" \
         "$work/header-filter.yarc" "$work/header-list.txt") &gt;"$work/header-matches.txt" 2&gt;"$work/header-filter.stderr" &amp;
     scan_pid=$!
@@ -1036,10 +1037,10 @@ if ((vulnerable+vendor_unverified+unknown&gt;100)); then last_scan+=' (first 100
 mv -f -- "$output/summary.txt.new" "$output/summary.txt"
 finished=1
 if ((${{#reasons[@]})); then exit 10; fi
-END_PHP_YARA_30ed8051da2e680c
+END_PHP_YARA_3eb9ad0b62bbab5b
 delete "{parameter "work"}/scan-macos.sh"
 move __createfile "{parameter "work"}/scan-macos.sh"
-continue if {sha256 of file "scan-macos.sh" of folder (parameter "work") = "30ed8051da2e680c64a5355fdd31287d1293d29acf7c98e98c6ac786756cf351"}
+continue if {sha256 of file "scan-macos.sh" of folder (parameter "work") = "3eb9ad0b62bbab5ba6266270bc086ed6659688f1db286df3a745c4225ddbf191"}
 delete __createfile
 createfile until END_PHP_YARA_40d8859de3217c09
 #!/bin/bash
