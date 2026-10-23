@@ -343,6 +343,19 @@ def main():
         scan('bulk-native-size-boundary',limited,'UNKNOWN',['--include-nonstandard-names','1'])
         omitted=scope('excluded-source-name',{'service.js':bins['8.5.11']['php']})
         scan('excluded-source-name',omitted,'FALSE',['--include-nonstandard-names','1'])
+        original_scanner=(work/'scan-macos.sh').read_text()
+        marker='    filter_rc=0\n'
+        assert original_scanner.count(marker)==1
+        injected=original_scanner.replace(marker,marker+'    for vanished_path in "${batch_paths[@]}"; do\n        if [[ ${vanished_path##*/} = volatile.bin ]]; then rm -f -- "$vanished_path"; fi\n    done\n')
+        vanishing=scope('vanishing-native',{'service.bin':bins['8.5.11']['php'],'volatile.bin':bins['8.5.11']['php']})
+        for index in range(64): (vanishing/('plain-'+str(index)+'.bin')).write_bytes(b'ordinary data')
+        try:
+            (work/'scan-macos.sh').write_bytes(injected.encode())
+            summary,_=scan('native-vanished-file',vanishing,'TRUE',['--include-nonstandard-names','1'])
+            assert '(Partial:' not in summary
+            assert 'Vanished files skipped during header filtering: 1' in (artifacts/'native-vanished-file-scan.log').read_text()
+        finally:
+            (work/'scan-macos.sh').write_bytes(original_scanner.encode())
         before=root/'before-work';before.mkdir()
         assert sha(base/'baseline.bes')==manifest['baseline_sha256']
         extract_payloads(base/'baseline.bes',before)

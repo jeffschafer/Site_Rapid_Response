@@ -313,7 +313,7 @@ delete "{parameter "work"}/php-detect.yar"
 move __createfile "{parameter "work"}/php-detect.yar"
 continue if {sha256 of file "php-detect.yar" of folder (parameter "work") = "0f68f1276f3d50db3dcba06fd1d8089e157fbc8e60bcca49ac1e7b2dde664615"}
 delete __createfile
-createfile until END_PHP_YARA_3eb9ad0b62bbab5b
+createfile until END_PHP_YARA_4c2482f9ed5828ef
 #!/bin/bash
 # macOS PHP discovery with stock Bash 3.2, BSD utilities and stock zsh modules.
 # No Python, jq, GNU tools, compiler or PHP execution required.
@@ -752,6 +752,7 @@ batch_paths=()
 batch_sizes=()
 header_compiled=0
 header_batches=0
+header_vanished=0
 
 flush_header_batch() {{
     ((batch_count)) || return 0
@@ -803,8 +804,23 @@ flush_header_batch() {{
         filter_stopped=1
     fi
     if [[ -s $work/header-filter.stderr ]]; then
-        reasons+=('unreadable files during header filtering')
-        head -c 2048 "$work/header-filter.stderr" &gt;&gt;"$output/scan.log"
+        # Files can disappear after find (notably BigFix's own temporary files).
+        # Ignore only the pinned engine's complete ENOENT diagnostic; access,
+        # mapping and other errors still qualify coverage as incomplete.
+        : &gt;"$work/header-real-errors.txt"
+        if awk -v errors="$work/header-real-errors.txt" -v count="$work/header-vanished.count" '
+            /^error: can.t open .*: No such file or directory \(os error 2\)$/ {{vanished++; next}
+            {{print &gt; errors} END {{print vanished+0 &gt; count}' "$work/header-filter.stderr"; then
+            IFS= read -r index &lt;"$work/header-vanished.count"
+            [[ $index =~ ^[0-9]+$ ]] || {{ reasons+=('native header filtering output unavailable'); filter_stopped=1; index=0; }
+            header_vanished=$((header_vanished+index))
+        else
+            reasons+=('native header filtering output unavailable'); filter_stopped=1
+        fi
+        if [[ -s $work/header-real-errors.txt ]]; then
+            reasons+=('unreadable files during header filtering')
+            head -c 2048 "$work/header-real-errors.txt" &gt;&gt;"$output/scan.log"
+        fi
     fi
     # Paths here are validated UTF-8 without control characters. Bulk lookup
     # avoids an O(batch-size) shell search for each parallel YARA output row.
@@ -886,6 +902,7 @@ done &lt;"$fifo"
 flush_header_batch || :
 stop_header_worker
 printf "Native header batches: %s\n" "$header_batches" &gt;&gt;"$output/scan.log"
+if ((header_vanished)); then printf "Vanished files skipped during header filtering: %s\n" "$header_vanished" &gt;&gt;"$output/scan.log"; fi
 if ((discovery_stopped)); then kill "$find_pid" 2&gt;/dev/null || :; fi
 find_rc=0; wait "$find_pid" || find_rc=$?; find_pid=
 if ((find_rc!=0 &amp;&amp; !discovery_stopped)); then
@@ -1037,10 +1054,10 @@ if ((vulnerable+vendor_unverified+unknown&gt;100)); then last_scan+=' (first 100
 mv -f -- "$output/summary.txt.new" "$output/summary.txt"
 finished=1
 if ((${{#reasons[@]})); then exit 10; fi
-END_PHP_YARA_3eb9ad0b62bbab5b
+END_PHP_YARA_4c2482f9ed5828ef
 delete "{parameter "work"}/scan-macos.sh"
 move __createfile "{parameter "work"}/scan-macos.sh"
-continue if {sha256 of file "scan-macos.sh" of folder (parameter "work") = "3eb9ad0b62bbab5ba6266270bc086ed6659688f1db286df3a745c4225ddbf191"}
+continue if {sha256 of file "scan-macos.sh" of folder (parameter "work") = "4c2482f9ed5828ef34832f02ab0844134e98d9c89155961c2d0982fc9bad1bb2"}
 delete __createfile
 createfile until END_PHP_YARA_40d8859de3217c09
 #!/bin/bash
