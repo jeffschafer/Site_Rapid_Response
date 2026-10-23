@@ -20,6 +20,7 @@ import tempfile
 import time
 from urllib.request import urlopen
 from xml.etree import ElementTree as ET
+from review_checks import workspace_checks
 
 
 def sha(path):
@@ -178,6 +179,7 @@ def main():
         record('stock shells, modules and exact packaged payload syntax',bash=bash)
         check_process_helpers(root,work)
         record('native lock, overlap, killed-owner recovery, 0755/0777 permissions, symlink rejection and watchdog')
+        workspace_checks(root,work,run,record)
         check_header_worker(root,work)
         record('native header worker:256 byte cases, timeout recovery, symlink rejection and cleanup')
         record('native local-volume/APFS root selection',roots=check_mount_inventory(root,work,artifacts))
@@ -264,7 +266,7 @@ def main():
                 assert sum(line.startswith('VULNERABLE=') for line in summary.splitlines())==4,summary
         scan('renamed-default',renamed,'FALSE')
         scan('renamed-enabled',renamed,'TRUE',['--include-nonstandard-names','1'])
-        summary,_=scan('unicode',unicode,'TRUE');assert 'café/php | PHP 8.5.11' in summary
+        summary,_=scan('unicode',unicode,'TRUE');assert str(unicode/'café/php') in (work/'candidates.txt').read_text();assert 'café/php | PHP 8.5.11' in summary
         encoded='x'+(str(excluded/'data')+'/*').encode().hex()
         scan('tree-exclusion',excluded,'FALSE',['--exclude-directories-hex',encoded])
         encoded='x'+(str(excluded/'data')+'/').encode().hex()
@@ -312,6 +314,25 @@ def main():
         scan('php-build-exceptions',build,'FALSE',['--include-nonstandard-names','1','--include-build-text','1'])
         assert 'Candidates: 2\n' in (artifacts/'php-build-exceptions-scan.log').read_text()
         assert 'Findings: 2\n' in (artifacts/'php-build-exceptions-scan.log').read_text()
+
+        api=scope('api-only',{})
+        (api/'opcache.so').write_bytes(header+b'\0'*96+b'API20250925,NTS\0')
+        scan('api-only-extension',api,'FALSE',['--include-nonstandard-names','1'])
+        mixed=scope('patched-extension',{'php':bins['8.5.12']['php']})
+        shutil.copyfile(api/'opcache.so',mixed/'opcache.so')
+        scan('patched-with-extension',mixed,'FALSE',['--include-nonstandard-names','1'])
+        (api/'opcache.so').write_bytes(header+b'\0'*96+b'API20250925,NTS\0Zend Engine v')
+        scan('unconfirmed-core-retained',api,'UNKNOWN',['--include-nonstandard-names','1'])
+        original_find=(work/'mac-find.sh').read_text()
+        try:
+            for label,message,state in [('enoent','No such file or directory','FALSE'),('denied','Permission denied','UNKNOWN'),('empty','','UNKNOWN')]:
+                folder=scope('find-'+label,{})
+                extra=("\nprintf 'find: vanished: "+message+r"\n' >&2"+'\n') if message else '\n'
+                (work/'mac-find.sh').write_text(original_find+extra+'exit 1\n')
+                result,_=scan('find-'+label,folder,state)
+                if label=='enoent':assert '(Partial:' not in result
+        finally:
+            (work/'mac-find.sh').write_text(original_find)
         before=root/'before-work';before.mkdir()
         assert sha(base/'baseline.bes')==manifest['baseline_sha256']
         extract_payloads(base/'baseline.bes',before)
@@ -320,9 +341,9 @@ def main():
         old_script=(before/'scan-macos.sh').read_bytes()
         new_script=(work/'scan-macos.sh').read_bytes()
         corpus=scope('speed-documents',{'business.bin':bins['8.5.11']['php']})
-        for number in range(2000):
-            extension=['3g2', '3gp', '3mf', 'aac', 'ai', 'aif', 'aifc', 'aiff', 'alac', 'amr', 'arw', 'ass', 'avi', 'avif', 'bdf', 'bib', 'blend', 'bmp', 'c4d', 'cfg', 'conf', 'cr2', 'cr3', 'css', 'csv', 'dgn', 'dib', 'dng', 'doc', 'docm', 'docx', 'dot', 'dotm', 'dotx', 'dwg', 'dxf', 'eml', 'eot', 'eps', 'epub', 'fbx', 'flac', 'flv', 'fnt', 'fon', 'frag', 'geojson', 'gif', 'glb', 'glsl', 'gltf', 'gpx', 'heic', 'heif', 'hlsl', 'htm', 'html', 'icns', 'ico', 'ics', 'iges', 'igs', 'indd', 'inf', 'ini', 'jpe', 'jpeg', 'jpg', 'json', 'jsonl', 'key', 'kml', 'kmz', 'less', 'log', 'm2ts', 'm2v', 'm4a', 'm4b', 'm4v', 'ma', 'manifest', 'markdown', 'max', 'mb', 'mbox', 'md', 'mid', 'midi', 'mkv', 'mobi', 'mov', 'mp3', 'mp4', 'mpeg', 'mpg', 'msg', 'mts', 'ndjson', 'nef', 'numbers', 'odp', 'ods', 'odt', 'oga', 'ogg', 'ogv', 'opus', 'orf', 'ost', 'otf', 'otp', 'ots', 'ott', 'pages', 'pcf', 'pdf', 'png', 'pot', 'potm', 'potx', 'pps', 'ppsm', 'ppsx', 'ppt', 'pptm', 'pptx', 'prefab', 'properties', 'psb', 'psd', 'pst', 'reg', 'rst', 'rtf', 'rw2', 'sass', 'scss', 'shader', 'shadergraph', 'shp', 'shx', 'sketch', 'srt', 'ssa', 'step', 'stl', 'stp', 'svg', 'tex', 'tif', 'tiff', 'toml', 'tsv', 'ttc', 'ttf', 'txt', 'uasset', 'ucas', 'umap', 'unity', 'unitypackage', 'usf', 'ush', 'utoc', 'vcf', 'vert', 'vob', 'vpk', 'vtt', 'wav', 'webm', 'webp', 'wma', 'wmv', 'woff', 'woff2', 'xcf', 'xhtml', 'xls', 'xlsb', 'xlsm', 'xlsx', 'xlt', 'xltm', 'xltx', 'xml', 'yaml', 'yml'][number % len(['3g2', '3gp', '3mf', 'aac', 'ai', 'aif', 'aifc', 'aiff', 'alac', 'amr', 'arw', 'ass', 'avi', 'avif', 'bdf', 'bib', 'blend', 'bmp', 'c4d', 'cfg', 'conf', 'cr2', 'cr3', 'css', 'csv', 'dgn', 'dib', 'dng', 'doc', 'docm', 'docx', 'dot', 'dotm', 'dotx', 'dwg', 'dxf', 'eml', 'eot', 'eps', 'epub', 'fbx', 'flac', 'flv', 'fnt', 'fon', 'frag', 'geojson', 'gif', 'glb', 'glsl', 'gltf', 'gpx', 'heic', 'heif', 'hlsl', 'htm', 'html', 'icns', 'ico', 'ics', 'iges', 'igs', 'indd', 'inf', 'ini', 'jpe', 'jpeg', 'jpg', 'json', 'jsonl', 'key', 'kml', 'kmz', 'less', 'log', 'm2ts', 'm2v', 'm4a', 'm4b', 'm4v', 'ma', 'manifest', 'markdown', 'max', 'mb', 'mbox', 'md', 'mid', 'midi', 'mkv', 'mobi', 'mov', 'mp3', 'mp4', 'mpeg', 'mpg', 'msg', 'mts', 'ndjson', 'nef', 'numbers', 'odp', 'ods', 'odt', 'oga', 'ogg', 'ogv', 'opus', 'orf', 'ost', 'otf', 'otp', 'ots', 'ott', 'pages', 'pcf', 'pdf', 'png', 'pot', 'potm', 'potx', 'pps', 'ppsm', 'ppsx', 'ppt', 'pptm', 'pptx', 'prefab', 'properties', 'psb', 'psd', 'pst', 'reg', 'rst', 'rtf', 'rw2', 'sass', 'scss', 'shader', 'shadergraph', 'shp', 'shx', 'sketch', 'srt', 'ssa', 'step', 'stl', 'stp', 'svg', 'tex', 'tif', 'tiff', 'toml', 'tsv', 'ttc', 'ttf', 'txt', 'uasset', 'ucas', 'umap', 'unity', 'unitypackage', 'usf', 'ush', 'utoc', 'vcf', 'vert', 'vob', 'vpk', 'vtt', 'wav', 'webm', 'webp', 'wma', 'wmv', 'woff', 'woff2', 'xcf', 'xhtml', 'xls', 'xlsb', 'xlsm', 'xlsx', 'xlt', 'xltm', 'xltx', 'xml', 'yaml', 'yml'])]
-            (corpus/('document-'+str(number)+'.'+extension)).write_bytes(b'ordinary document contents\n'*8)
+        for number in range(1000):
+            (corpus/('UPPERCASE-'+str(number)+'.BIN')).write_bytes(b'ordinary non-runtime content\n'*8)
+            (corpus/('EMPTY-'+str(number)+'.BIN')).touch()
         samples={mode:[] for mode in ['before','after']}
         try:
             for iteration in range(3):
@@ -334,9 +355,9 @@ def main():
         finally:
             (work/'scan-macos.sh').write_bytes(new_script)
         report['timings']={mode:{'runs_seconds':values,'median_seconds':statistics.median(values)} for mode,values in samples.items()}
-        report['timing_scope']='Exact before/after, 2001-file document corpus, warm-cache interleaved runs; both include cached archive extraction/verification, 512MiB and10%CPU. No whole-system speed claim.'
+        report['timing_scope']='Exact before/after, 2001-file uppercase/empty-file corpus, warm-cache interleaved runs; both include cached archive extraction/verification, 512MiB and10%CPU. No whole-system speed claim.'
         report['deep_scan_run']=False
-        record('controlled file-type exclusion timing and preserved real-PHP detection',files=2001)
+        record('controlled v3 discovery timing and preserved real-PHP detection',files=2001)
         report['passed']=True
     except Exception as error:
         report['passed']=False;report['error']=str(error);raise
