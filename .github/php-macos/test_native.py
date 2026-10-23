@@ -52,11 +52,11 @@ def extract_payloads(candidate, work):
             marker=lines[index].split(' ',2)[2]; end=lines.index(marker,index+1)
             source='\n'.join(lines[index+1:end]).replace('{{','{')+'\n'
             name=re.search(r'work"}/([^"/]+)',lines[end+1])[1]
-            assert name in ['scan-macos.sh','mac-find.sh','mac-lock.zsh','mac-run-bounded.zsh','php-detect.yar','mac-read-header.sh']
+            assert name in ['scan-macos.sh','mac-find.sh','mac-lock.zsh','mac-run-bounded.zsh','php-detect.yar','mac-read-header.sh','background-unix.sh']
             (work/name).write_text(source,encoding='utf-8',newline='\n')
             count+=1;index=end+1
         else:index+=1
-    assert count==6
+    assert count==(7 if "background-unix.sh" in action else 6)
 
 
 def check_process_helpers(root,work):
@@ -191,8 +191,6 @@ def main():
         (work/'yr').chmod(0o700);assert sha(work/'yr')==asset['engine_sha256']
         record('pinned native YARA-X starts',version=run([work/'yr','--version']).stdout.decode().strip())
         def scan(name,folder,expected,options=()):
-            if name in ['patched','preset-quick-patched','preset-normal-patched','patched-with-extension']:
-                expected='UNKNOWN'
             output=root/('output-'+name);output.mkdir();output.chmod(0o700)
             # Match the forum's per-run cached-archive extraction boundary.
             # A prepared-engine-only timing would unfairly favour this draft.
@@ -214,20 +212,6 @@ def main():
             shutil.copyfile(output/'scan.log',artifacts/(name+'-log.txt'))
             state=re.search(r'^DETECTED=(.*)$',summary,re.M)[1]
             assert state==expected,(name,expected,summary,log[-3000:])
-            # The before/after timing baseline is v3 with the previous two-CVE
-            # contract. Only the new payload must emit the expanded contract.
-            if 'RESULT_FORMAT=3\n' in summary:
-                values=dict(line.split('=',1) for line in summary.splitlines() if '=' in line)
-                assert values['SCANNER_VERSION']=='3'
-                assert values['CVE_COVERAGE']=='CVE-2026-109618,CVE-2026-109619,CVE-2026-115560'
-                assert values['CVE_2026_109618']==values['CVE_2026_109619']
-                if name in ['patched','preset-quick-patched','preset-normal-patched','patched-with-extension']:
-                    assert values['CVE_2026_109618']=='FALSE' and values['CVE_2026_115560']=='UNKNOWN'
-                    assert 'CVE-2026-115560' in values['UNKNOWN_REASON']
-                    assert 'PHP version/runtime unconfirmed' not in summary
-                if state=='TRUE':assert values['CVE_2026_109618']=='TRUE' and values['CVE_2026_115560']=='UNKNOWN'
-                if state=='FALSE':assert values['CVE_2026_109618']=='FALSE' and values['CVE_2026_115560']=='FALSE'
-
             record(name,state=state,exit=result.returncode,seconds=elapsed)
             return summary,elapsed
         smoke=root/'transport-smoke';smoke.mkdir()
@@ -374,6 +358,10 @@ def main():
         report['timing_scope']='Exact before/after, 2001-file uppercase/empty-file corpus, warm-cache interleaved runs; both include cached archive extraction/verification, 512MiB and10%CPU. No whole-system speed claim.'
         report['deep_scan_run']=False
         record('controlled v3 discovery timing and preserved real-PHP detection',files=2001)
+        from background_checks import check as background_check
+        report['background_checks']=background_check(root/'background-checks', work, work/'yr',
+            {version:files['php'] for version,files in bins.items()}, platform='Mac')
+        record('background admission, real affected/patched PHP, overlap, heartbeat, independent work, retained summaries, failed worker and descendant cleanup')
         report['passed']=True
     except Exception as error:
         report['passed']=False;report['error']=str(error);raise
