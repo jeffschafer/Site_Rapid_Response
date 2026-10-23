@@ -1,8 +1,8 @@
-# PHP preset validation on Mac
+# Native Mac validation awaiting upload approval
 
-Tests the exact Mac scanner on disposable Intel and Apple Silicon runners with
-real affected and patched PHP. Quick, Normal and Deep use their complete preset
-values; every mode retains 512 MiB and the 10% YARA CPU setting. Renamed files,
-the 512 MiB boundary and the 10-million-file validation ceiling are checked.
-Python drives CI only; the scanner uses stock Mac shells and tools.
-Managed BigFix Mac execution and older macOS versions require team validation.
+Tests the exact Mac candidate on disposable Intel and Apple Silicon runners.
+Checks real affected/patched PHP, renamed runtimes, all 189 excluded suffixes,
+PHP build evidence and the unchanged 512 MiB boundary. Compares speed with the
+exact earlier scanner on an identical document corpus at 10% YARA CPU.
+No Deep scans. Python drives CI only; endpoints need stock Mac tools.
+This bundle is local only. No branch, workflow, review PR or site was updated.

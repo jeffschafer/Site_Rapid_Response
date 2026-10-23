@@ -49,8 +49,9 @@
       "sha256": "08bc2eba2a588654ade1357174aa646b761556c862dda0678345ee29ed481209"
     }
   },
-  "candidate_sha256": "8652297b716675c4a2af1f5a61f6bedd13f47535e0980be75a64f0ab2acaac05",
+  "candidate_sha256": "98e347c4f2008bbb62491b9a96ddd2d3e78096585a361a0426e431cf5d5c2dd9",
   "forum_script_sha256": "60239e3a0babd5a17f5d616ff48d2ce75b76c590142e8dca0adf42d7d89210f0",
   "forum_source_bes_sha256": "b87494a9ecd625f20eff2a545e04141b528bb2d337e395ccaa6c1c150d3604ee",
-  "scope": "Native payload tests on disposable runners; no BigFix client installed."
+  "scope": "Native payload tests on disposable runners; no BigFix client installed.",
+  "baseline_sha256": "8652297b716675c4a2af1f5a61f6bedd13f47535e0980be75a64f0ab2acaac05"
 }

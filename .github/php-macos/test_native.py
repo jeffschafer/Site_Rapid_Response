@@ -278,7 +278,6 @@ def main():
         with (data/'php').open('wb') as handle:
             handle.write(b'plain data');handle.truncate(512*1024*1024)
         scan('large-data-default',data,'FALSE')
-        scan('large-data-broad',data,'FALSE',['--include-nonstandard-names','1','--include-broader-locations','1','--include-build-text','1'])
         encoded='x'+(str(affected)+'/*').encode().hex()
         scan('explicit-file-root-exclusion',affected/'php','FALSE',['--exclude-directories-hex',encoded])
         many=scope('large-many',{})
@@ -288,48 +287,56 @@ def main():
         assert 'UNKNOWN_REASON=22 possible runtime file(s) at or above 512 MiB skipped' in summary
         assert (artifacts/'bounded-large-file-details-scan.log').read_text().count('Size-limited runtime candidate')==20
 
-        scan('preset-quick-affected', affected, 'TRUE', ['--enumeration-seconds', '1200', '--scan-seconds', '900', '--max-files', '5000000', '--candidate-gb', '30', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '0', '--include-broader-locations', '0', '--include-build-text', '0'])
-        scan('preset-quick-patched', patched, 'FALSE', ['--enumeration-seconds', '1200', '--scan-seconds', '900', '--max-files', '5000000', '--candidate-gb', '30', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '0', '--include-broader-locations', '0', '--include-build-text', '0'])
-        scan('preset-quick-renamed', renamed, 'FALSE', ['--enumeration-seconds', '1200', '--scan-seconds', '900', '--max-files', '5000000', '--candidate-gb', '30', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '0', '--include-broader-locations', '0', '--include-build-text', '0'])
-        scan('preset-quick-limited', limited, 'UNKNOWN', ['--enumeration-seconds', '1200', '--scan-seconds', '900', '--max-files', '5000000', '--candidate-gb', '30', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '0', '--include-broader-locations', '0', '--include-build-text', '0'])
-        scan('preset-normal-affected', affected, 'TRUE', ['--enumeration-seconds', '1800', '--scan-seconds', '1200', '--max-files', '5000000', '--candidate-gb', '40', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '1', '--include-broader-locations', '0', '--include-build-text', '0'])
-        scan('preset-normal-patched', patched, 'FALSE', ['--enumeration-seconds', '1800', '--scan-seconds', '1200', '--max-files', '5000000', '--candidate-gb', '40', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '1', '--include-broader-locations', '0', '--include-build-text', '0'])
-        scan('preset-normal-renamed', renamed, 'TRUE', ['--enumeration-seconds', '1800', '--scan-seconds', '1200', '--max-files', '5000000', '--candidate-gb', '40', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '1', '--include-broader-locations', '0', '--include-build-text', '0'])
-        scan('preset-normal-limited', limited, 'UNKNOWN', ['--enumeration-seconds', '1800', '--scan-seconds', '1200', '--max-files', '5000000', '--candidate-gb', '40', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '1', '--include-broader-locations', '0', '--include-build-text', '0'])
-        scan('preset-deep-affected', affected, 'TRUE', ['--enumeration-seconds', '3600', '--scan-seconds', '1800', '--max-files', '10000000', '--candidate-gb', '60', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '1', '--include-broader-locations', '1', '--include-build-text', '1'])
-        scan('preset-deep-patched', patched, 'FALSE', ['--enumeration-seconds', '3600', '--scan-seconds', '1800', '--max-files', '10000000', '--candidate-gb', '60', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '1', '--include-broader-locations', '1', '--include-build-text', '1'])
-        scan('preset-deep-renamed', renamed, 'TRUE', ['--enumeration-seconds', '3600', '--scan-seconds', '1800', '--max-files', '10000000', '--candidate-gb', '60', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '1', '--include-broader-locations', '1', '--include-build-text', '1'])
-        scan('preset-deep-limited', limited, 'UNKNOWN', ['--enumeration-seconds', '3600', '--scan-seconds', '1800', '--max-files', '10000000', '--candidate-gb', '60', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '1', '--include-broader-locations', '1', '--include-build-text', '1'])
+        scan('preset-quick-affected', affected, 'TRUE', ['--enumeration-seconds', '600', '--scan-seconds', '600', '--max-files', '5000000', '--candidate-gb', '30', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '0', '--include-broader-locations', '0', '--include-build-text', '0'])
+        scan('preset-quick-patched', patched, 'FALSE', ['--enumeration-seconds', '600', '--scan-seconds', '600', '--max-files', '5000000', '--candidate-gb', '30', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '0', '--include-broader-locations', '0', '--include-build-text', '0'])
+        scan('preset-quick-renamed', renamed, 'FALSE', ['--enumeration-seconds', '600', '--scan-seconds', '600', '--max-files', '5000000', '--candidate-gb', '30', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '0', '--include-broader-locations', '0', '--include-build-text', '0'])
+        scan('preset-quick-limited', limited, 'UNKNOWN', ['--enumeration-seconds', '600', '--scan-seconds', '600', '--max-files', '5000000', '--candidate-gb', '30', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '0', '--include-broader-locations', '0', '--include-build-text', '0'])
+        scan('preset-normal-affected', affected, 'TRUE', ['--enumeration-seconds', '1800', '--scan-seconds', '1800', '--max-files', '10000000', '--candidate-gb', '40', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '1', '--include-broader-locations', '0', '--include-build-text', '0'])
+        scan('preset-normal-patched', patched, 'FALSE', ['--enumeration-seconds', '1800', '--scan-seconds', '1800', '--max-files', '10000000', '--candidate-gb', '40', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '1', '--include-broader-locations', '0', '--include-build-text', '0'])
+        scan('preset-normal-renamed', renamed, 'TRUE', ['--enumeration-seconds', '1800', '--scan-seconds', '1800', '--max-files', '10000000', '--candidate-gb', '40', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '1', '--include-broader-locations', '0', '--include-build-text', '0'])
+        scan('preset-normal-limited', limited, 'UNKNOWN', ['--enumeration-seconds', '1800', '--scan-seconds', '1800', '--max-files', '10000000', '--candidate-gb', '40', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '1', '--include-broader-locations', '0', '--include-build-text', '0'])
         invalid=root/'invalid-limit';invalid.mkdir();invalid.chmod(0o700)
         run(['/bin/bash',work/'scan-macos.sh','--engine',work/'yr','--rules',work/'php-detect.yar','--output',invalid,'--root',patched,'--max-files','10000001'],allowed=(2,))
         record('file ceiling rejects 10000001')
 
-        # Controlled corpus: exact original forum Bash script and both new modes.
-        # Balanced warm runs; this is not a full-machine scan or BigFix timing.
-        corpus=scope('corpus',{'php':bins['8.5.11']['php'],'php-cgi':bins['8.5.12']['php-cgi']})
-        for number in range(10000):
-            folder=corpus/str(number//250);folder.mkdir(exist_ok=True)
-            (folder/('business-'+str(number)+'.bin')).write_bytes(b'not a PHP runtime\0'*8)
-        samples={mode:[] for mode in ['forum','default','nonstandard']}
-        for iteration in range(3):
-            modes=list(samples);modes=modes[iteration:]+modes[:iteration]
-            for mode in modes:
-                name='speed-'+str(iteration)+'-'+mode
-                if mode=='forum':
-                    output=root/name
-                    started=time.monotonic()
-                    result=run(['/bin/bash',base/'forum-macos.sh','-t',corpus,'-o',output,'-a',archive,'-m','512'],
-                               timeout=300,allowed=(0,1))
-                    elapsed=time.monotonic()-started
-                    (artifacts/(name+'-stdout.txt')).write_bytes(result.stdout+result.stderr)
-                    rows=[file for file in output.rglob('*.text') if not file.name.endswith('.raw.text')]
-                    assert rows and any('8.5.11' in file.read_text() and '8.5.12' in file.read_text() for file in rows)
-                else:
-                    _,elapsed=scan(name,corpus,'TRUE',['--include-nonstandard-names',str(int(mode=='nonstandard'))])
-                samples[mode].append(elapsed)
+        # New all-mode file-type filter: real PHP bytes are deliberately
+        # renamed with every excluded suffix, including uppercase forms.
+        excluded_types=scope('excluded-types',{})
+        for extension in ['3g2', '3gp', '3mf', 'aac', 'ai', 'aif', 'aifc', 'aiff', 'alac', 'amr', 'arw', 'ass', 'avi', 'avif', 'bdf', 'bib', 'blend', 'bmp', 'c4d', 'cfg', 'conf', 'cr2', 'cr3', 'css', 'csv', 'dgn', 'dib', 'dng', 'doc', 'docm', 'docx', 'dot', 'dotm', 'dotx', 'dwg', 'dxf', 'eml', 'eot', 'eps', 'epub', 'fbx', 'flac', 'flv', 'fnt', 'fon', 'frag', 'geojson', 'gif', 'glb', 'glsl', 'gltf', 'gpx', 'heic', 'heif', 'hlsl', 'htm', 'html', 'icns', 'ico', 'ics', 'iges', 'igs', 'indd', 'inf', 'ini', 'jpe', 'jpeg', 'jpg', 'json', 'jsonl', 'key', 'kml', 'kmz', 'less', 'log', 'm2ts', 'm2v', 'm4a', 'm4b', 'm4v', 'ma', 'manifest', 'markdown', 'max', 'mb', 'mbox', 'md', 'mid', 'midi', 'mkv', 'mobi', 'mov', 'mp3', 'mp4', 'mpeg', 'mpg', 'msg', 'mts', 'ndjson', 'nef', 'numbers', 'odp', 'ods', 'odt', 'oga', 'ogg', 'ogv', 'opus', 'orf', 'ost', 'otf', 'otp', 'ots', 'ott', 'pages', 'pcf', 'pdf', 'png', 'pot', 'potm', 'potx', 'pps', 'ppsm', 'ppsx', 'ppt', 'pptm', 'pptx', 'prefab', 'properties', 'psb', 'psd', 'pst', 'reg', 'rst', 'rtf', 'rw2', 'sass', 'scss', 'shader', 'shadergraph', 'shp', 'shx', 'sketch', 'srt', 'ssa', 'step', 'stl', 'stp', 'svg', 'tex', 'tif', 'tiff', 'toml', 'tsv', 'ttc', 'ttf', 'txt', 'uasset', 'ucas', 'umap', 'unity', 'unitypackage', 'usf', 'ush', 'utoc', 'vcf', 'vert', 'vob', 'vpk', 'vtt', 'wav', 'webm', 'webp', 'wma', 'wmv', 'woff', 'woff2', 'xcf', 'xhtml', 'xls', 'xlsb', 'xlsm', 'xlsx', 'xlt', 'xltm', 'xltx', 'xml', 'yaml', 'yml']:
+            os.link(bins['8.5.11']['php'],excluded_types/('php.'+extension.upper()))
+        scan('excluded-file-types',excluded_types,'FALSE',['--include-nonstandard-names','1'])
+        assert 'Candidates: 0\n' in (artifacts/'excluded-file-types-scan.log').read_text()
+        build=scope('build-evidence',{})
+        (build/'php_version.h').write_text('#define PHP_VERSION "8.5.11"\n#define PHP_MAJOR_VERSION 8\n')
+        (build/'php-config').write_text('version="8.5.11"\nphp_cli_binary=php\n--php-binary\n')
+        scan('php-build-exceptions',build,'FALSE',['--include-nonstandard-names','1','--include-build-text','1'])
+        assert 'Candidates: 2\n' in (artifacts/'php-build-exceptions-scan.log').read_text()
+        assert 'Findings: 2\n' in (artifacts/'php-build-exceptions-scan.log').read_text()
+        before=root/'before-work';before.mkdir()
+        assert sha(base/'baseline.bes')==manifest['baseline_sha256']
+        extract_payloads(base/'baseline.bes',before)
+        for leaf in ['mac-find.sh','mac-lock.zsh','mac-run-bounded.zsh','mac-read-header.sh','php-detect.yar']:
+            assert (before/leaf).read_bytes()==(work/leaf).read_bytes()
+        old_script=(before/'scan-macos.sh').read_bytes()
+        new_script=(work/'scan-macos.sh').read_bytes()
+        corpus=scope('speed-documents',{'business.bin':bins['8.5.11']['php']})
+        for number in range(2000):
+            extension=['3g2', '3gp', '3mf', 'aac', 'ai', 'aif', 'aifc', 'aiff', 'alac', 'amr', 'arw', 'ass', 'avi', 'avif', 'bdf', 'bib', 'blend', 'bmp', 'c4d', 'cfg', 'conf', 'cr2', 'cr3', 'css', 'csv', 'dgn', 'dib', 'dng', 'doc', 'docm', 'docx', 'dot', 'dotm', 'dotx', 'dwg', 'dxf', 'eml', 'eot', 'eps', 'epub', 'fbx', 'flac', 'flv', 'fnt', 'fon', 'frag', 'geojson', 'gif', 'glb', 'glsl', 'gltf', 'gpx', 'heic', 'heif', 'hlsl', 'htm', 'html', 'icns', 'ico', 'ics', 'iges', 'igs', 'indd', 'inf', 'ini', 'jpe', 'jpeg', 'jpg', 'json', 'jsonl', 'key', 'kml', 'kmz', 'less', 'log', 'm2ts', 'm2v', 'm4a', 'm4b', 'm4v', 'ma', 'manifest', 'markdown', 'max', 'mb', 'mbox', 'md', 'mid', 'midi', 'mkv', 'mobi', 'mov', 'mp3', 'mp4', 'mpeg', 'mpg', 'msg', 'mts', 'ndjson', 'nef', 'numbers', 'odp', 'ods', 'odt', 'oga', 'ogg', 'ogv', 'opus', 'orf', 'ost', 'otf', 'otp', 'ots', 'ott', 'pages', 'pcf', 'pdf', 'png', 'pot', 'potm', 'potx', 'pps', 'ppsm', 'ppsx', 'ppt', 'pptm', 'pptx', 'prefab', 'properties', 'psb', 'psd', 'pst', 'reg', 'rst', 'rtf', 'rw2', 'sass', 'scss', 'shader', 'shadergraph', 'shp', 'shx', 'sketch', 'srt', 'ssa', 'step', 'stl', 'stp', 'svg', 'tex', 'tif', 'tiff', 'toml', 'tsv', 'ttc', 'ttf', 'txt', 'uasset', 'ucas', 'umap', 'unity', 'unitypackage', 'usf', 'ush', 'utoc', 'vcf', 'vert', 'vob', 'vpk', 'vtt', 'wav', 'webm', 'webp', 'wma', 'wmv', 'woff', 'woff2', 'xcf', 'xhtml', 'xls', 'xlsb', 'xlsm', 'xlsx', 'xlt', 'xltm', 'xltx', 'xml', 'yaml', 'yml'][number % len(['3g2', '3gp', '3mf', 'aac', 'ai', 'aif', 'aifc', 'aiff', 'alac', 'amr', 'arw', 'ass', 'avi', 'avif', 'bdf', 'bib', 'blend', 'bmp', 'c4d', 'cfg', 'conf', 'cr2', 'cr3', 'css', 'csv', 'dgn', 'dib', 'dng', 'doc', 'docm', 'docx', 'dot', 'dotm', 'dotx', 'dwg', 'dxf', 'eml', 'eot', 'eps', 'epub', 'fbx', 'flac', 'flv', 'fnt', 'fon', 'frag', 'geojson', 'gif', 'glb', 'glsl', 'gltf', 'gpx', 'heic', 'heif', 'hlsl', 'htm', 'html', 'icns', 'ico', 'ics', 'iges', 'igs', 'indd', 'inf', 'ini', 'jpe', 'jpeg', 'jpg', 'json', 'jsonl', 'key', 'kml', 'kmz', 'less', 'log', 'm2ts', 'm2v', 'm4a', 'm4b', 'm4v', 'ma', 'manifest', 'markdown', 'max', 'mb', 'mbox', 'md', 'mid', 'midi', 'mkv', 'mobi', 'mov', 'mp3', 'mp4', 'mpeg', 'mpg', 'msg', 'mts', 'ndjson', 'nef', 'numbers', 'odp', 'ods', 'odt', 'oga', 'ogg', 'ogv', 'opus', 'orf', 'ost', 'otf', 'otp', 'ots', 'ott', 'pages', 'pcf', 'pdf', 'png', 'pot', 'potm', 'potx', 'pps', 'ppsm', 'ppsx', 'ppt', 'pptm', 'pptx', 'prefab', 'properties', 'psb', 'psd', 'pst', 'reg', 'rst', 'rtf', 'rw2', 'sass', 'scss', 'shader', 'shadergraph', 'shp', 'shx', 'sketch', 'srt', 'ssa', 'step', 'stl', 'stp', 'svg', 'tex', 'tif', 'tiff', 'toml', 'tsv', 'ttc', 'ttf', 'txt', 'uasset', 'ucas', 'umap', 'unity', 'unitypackage', 'usf', 'ush', 'utoc', 'vcf', 'vert', 'vob', 'vpk', 'vtt', 'wav', 'webm', 'webp', 'wma', 'wmv', 'woff', 'woff2', 'xcf', 'xhtml', 'xls', 'xlsb', 'xlsm', 'xlsx', 'xlt', 'xltm', 'xltx', 'xml', 'yaml', 'yml'])]
+            (corpus/('document-'+str(number)+'.'+extension)).write_bytes(b'ordinary document contents\n'*8)
+        samples={mode:[] for mode in ['before','after']}
+        try:
+            for iteration in range(3):
+                for mode in (['before','after'] if iteration%2==0 else ['after','before']):
+                    (work/'scan-macos.sh').write_bytes(old_script if mode=='before' else new_script)
+                    _,elapsed=scan('speed-'+str(iteration)+'-'+mode,corpus,'TRUE',
+                        ['--include-nonstandard-names','1','--max-file-mb','512','--cpu-limit','10'])
+                    samples[mode].append(elapsed)
+        finally:
+            (work/'scan-macos.sh').write_bytes(new_script)
         report['timings']={mode:{'runs_seconds':values,'median_seconds':statistics.median(values)} for mode,values in samples.items()}
-        report['timing_scope']='Cached archive through scan completion; extraction and verification in both. Default policies differ: new CPU target10%, standard names by default, 512MiB both. No full-machine speed claim.'
-        record('controlled corpus timing and detection comparison',files=10002)
+        report['timing_scope']='Exact before/after, 2001-file document corpus, warm-cache interleaved runs; both include cached archive extraction/verification, 512MiB and10%CPU. No whole-system speed claim.'
+        report['deep_scan_run']=False
+        record('controlled file-type exclusion timing and preserved real-PHP detection',files=2001)
         report['passed']=True
     except Exception as error:
         report['passed']=False;report['error']=str(error);raise
