@@ -30,7 +30,7 @@ def check(root, sources, engine, bins, platform='Linux', shell='/bin/bash'):
     def attempt(output, number):
         work=output/('work-'+str(number)+'-2-3')
         work.mkdir(mode=0o700)
-        for leaf in ['scan-linux.sh','scan-macos.sh','mac-lock.zsh','mac-find.sh','mac-read-header.sh','mac-run-bounded.zsh','php-detect.yar','background-unix.sh']:
+        for leaf in ['scan-linux.sh','linux-read-header.sh','scan-macos.sh','mac-lock.zsh','mac-find.sh','mac-read-header.sh','mac-run-bounded.zsh','php-detect.yar','php-header-filter.yar','background-unix.sh']:
             if (sources/leaf).is_file(): shutil.copyfile(sources/leaf,work/leaf)
         shutil.copyfile(engine,work/'yr');(work/'yr').chmod(0o700)
         return work
@@ -115,21 +115,3 @@ kill -KILL $$
     results.append({'case':'killed-worker-descendant-stopped-before-cleanup','passed':True})
     return results
 
-
-def main():
-    import sys
-    import tarfile
-    import tempfile
-    base=Path(sys.argv[1])
-    with tempfile.TemporaryDirectory(prefix='php-background-',dir='/home/schaferj') as temporary:
-        root=Path(temporary);root.chmod(0o700)
-        engine=root/'yr'
-        with tarfile.open(base/'assets/yara-x-v1.22.0-x86_64-unknown-linux-gnu.tar.gz') as archive: engine.write_bytes(archive.extractfile('yr').read())
-        engine.chmod(0o700)
-        bins={version:base/'assets'/('php-'+version+'-amd64') for version in ['8.5.11','8.5.12']}
-        results=check(root/'checks',base/'sources',engine,bins)
-    (base/'background-linux-tests.json').write_text(json.dumps(results,indent=2)+'\n')
-    print(json.dumps({'linux_background_cases':results,'passed':True}))
-
-
-if __name__=='__main__': main()

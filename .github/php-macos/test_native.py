@@ -52,11 +52,11 @@ def extract_payloads(candidate, work):
             marker=lines[index].split(' ',2)[2]; end=lines.index(marker,index+1)
             source='\n'.join(lines[index+1:end]).replace('{{','{')+'\n'
             name=re.search(r'work"}/([^"/]+)',lines[end+1])[1]
-            assert name in ['scan-macos.sh','mac-find.sh','mac-lock.zsh','mac-run-bounded.zsh','php-detect.yar','mac-read-header.sh','background-unix.sh']
+            assert name in ['scan-macos.sh','mac-find.sh','mac-lock.zsh','mac-run-bounded.zsh','php-detect.yar','mac-read-header.sh','background-unix.sh','php-header-filter.yar']
             (work/name).write_text(source,encoding='utf-8',newline='\n')
             count+=1;index=end+1
         else:index+=1
-    assert count==(7 if "background-unix.sh" in action else 6)
+    assert count==(8 if "php-header-filter.yar" in action else 7 if "background-unix.sh" in action else 6)
 
 
 def check_process_helpers(root,work):
@@ -333,6 +333,16 @@ def main():
                 if label=='enoent':assert '(Partial:' not in result
         finally:
             (work/'mac-find.sh').write_text(original_find)
+        bulk=scope('bulk-native',{'service.bin':bins['8.5.11']['php']})
+        for index in range(64): (bulk/('business-'+str(index)+'.bin')).write_bytes(b'ordinary application data')
+        scan('bulk-native-affected',bulk,'TRUE',['--include-nonstandard-names','1'])
+        assert 'Native header batches: 1' in (artifacts/'bulk-native-affected-scan.log').read_text()
+        shutil.copyfile(bins['8.5.12']['php'],bulk/'service.bin')
+        scan('bulk-native-patched',bulk,'FALSE',['--include-nonstandard-names','1'])
+        assert 'Native header batches: 1' in (artifacts/'bulk-native-patched-scan.log').read_text()
+        scan('bulk-native-size-boundary',limited,'UNKNOWN',['--include-nonstandard-names','1'])
+        omitted=scope('excluded-source-name',{'service.js':bins['8.5.11']['php']})
+        scan('excluded-source-name',omitted,'FALSE',['--include-nonstandard-names','1'])
         before=root/'before-work';before.mkdir()
         assert sha(base/'baseline.bes')==manifest['baseline_sha256']
         extract_payloads(base/'baseline.bes',before)
@@ -357,7 +367,7 @@ def main():
         report['timings']={mode:{'runs_seconds':values,'median_seconds':statistics.median(values)} for mode,values in samples.items()}
         report['timing_scope']='Exact before/after, 2001-file uppercase/empty-file corpus, warm-cache interleaved runs; both include cached archive extraction/verification, 512MiB and10%CPU. No whole-system speed claim.'
         report['deep_scan_run']=False
-        record('controlled v3 discovery timing and preserved real-PHP detection',files=2001)
+        record('controlled local bulk discovery timing and preserved real-PHP detection',files=2001)
         from background_checks import check as background_check
         report['background_checks']=background_check(root/'background-checks', work, work/'yr',
             {version:files['php'] for version,files in bins.items()}, platform='Mac')

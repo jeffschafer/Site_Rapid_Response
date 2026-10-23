@@ -1,10 +1,7 @@
-# Background PHP scanner native Mac tests
+# Local PHP performance candidate - native Mac tests
 
-Temporary test bundle only. PRs #6/#7 and BIGFIX SOC remain unchanged.
-
-Runs the existing detection and safety checks on disposable Intel and Apple
-Silicon Mac runners, then tests background launch, real affected/patched PHP,
-overlap protection, heartbeat, another process running during a scan, retained
-summary.txt/scan.log after cleanup, worker failure and descendant termination.
-No Deep or full-volume scan. Python is only the test driver, never an endpoint
-scanner dependency. No services, installations or security-policy changes.
+Temporary test branch only. No contribution PR changes.
+Tests exact packaged source on disposable Intel and Apple Silicon Macs with
+pinned affected/patched PHP, native header batches, exclusions, limits,
+background lifecycle and matched before/after timing. No Deep or whole-volume
+scans. Python is the CI driver only, not an endpoint scanner dependency.
