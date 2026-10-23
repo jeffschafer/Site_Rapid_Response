@@ -1,5 +1,3 @@
-# PHP scanner v3 native Mac test bundle
+# Three-CVE v3 Mac tests
 
-Prepared locally for the existing temporary test branch. No PR or BIGFIX SOC update.
-Tests Intel and Apple Silicon using pinned real affected/patched PHP fixtures, the exact v3 BES payload, helper safety, expected find errors, API-only extensions, Unicode paths, and controlled before/after timing. No Deep scans or full-volume scans.
-Python is used only by the CI test driver; endpoint scanning has no Python dependency.
+Temporary test branch only. Tests exact native Intel/Apple Silicon payloads, real affected/patched PHP, and separate original-CVE versus CVE-2026-115560 review states. Does not prove exploitation or effective application configuration. No Deep scans, PR changes or BIGFIX SOC updates.

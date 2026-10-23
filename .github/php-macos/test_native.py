@@ -191,6 +191,8 @@ def main():
         (work/'yr').chmod(0o700);assert sha(work/'yr')==asset['engine_sha256']
         record('pinned native YARA-X starts',version=run([work/'yr','--version']).stdout.decode().strip())
         def scan(name,folder,expected,options=()):
+            if name in ['patched','preset-quick-patched','preset-normal-patched','patched-with-extension']:
+                expected='UNKNOWN'
             output=root/('output-'+name);output.mkdir();output.chmod(0o700)
             # Match the forum's per-run cached-archive extraction boundary.
             # A prepared-engine-only timing would unfairly favour this draft.
@@ -212,6 +214,20 @@ def main():
             shutil.copyfile(output/'scan.log',artifacts/(name+'-log.txt'))
             state=re.search(r'^DETECTED=(.*)$',summary,re.M)[1]
             assert state==expected,(name,expected,summary,log[-3000:])
+            # The before/after timing baseline is v3 with the previous two-CVE
+            # contract. Only the new payload must emit the expanded contract.
+            if 'RESULT_FORMAT=3\n' in summary:
+                values=dict(line.split('=',1) for line in summary.splitlines() if '=' in line)
+                assert values['SCANNER_VERSION']=='3'
+                assert values['CVE_COVERAGE']=='CVE-2026-109618,CVE-2026-109619,CVE-2026-115560'
+                assert values['CVE_2026_109618']==values['CVE_2026_109619']
+                if name in ['patched','preset-quick-patched','preset-normal-patched','patched-with-extension']:
+                    assert values['CVE_2026_109618']=='FALSE' and values['CVE_2026_115560']=='UNKNOWN'
+                    assert 'CVE-2026-115560' in values['UNKNOWN_REASON']
+                    assert 'PHP version/runtime unconfirmed' not in summary
+                if state=='TRUE':assert values['CVE_2026_109618']=='TRUE' and values['CVE_2026_115560']=='UNKNOWN'
+                if state=='FALSE':assert values['CVE_2026_109618']=='FALSE' and values['CVE_2026_115560']=='FALSE'
+
             record(name,state=state,exit=result.returncode,seconds=elapsed)
             return summary,elapsed
         smoke=root/'transport-smoke';smoke.mkdir()
