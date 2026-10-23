@@ -274,6 +274,20 @@ def main():
         limited=scope('limited',{'php':bins['8.5.11']['php']})
         with (limited/'php').open('r+b') as handle:handle.truncate(512*1024*1024)
         scan('size-limit',limited,'UNKNOWN')
+        data=scope('large-data',{})
+        with (data/'php').open('wb') as handle:
+            handle.write(b'plain data');handle.truncate(512*1024*1024)
+        scan('large-data-default',data,'FALSE')
+        scan('large-data-broad',data,'FALSE',['--include-nonstandard-names','1','--include-broader-locations','1','--include-build-text','1'])
+        encoded='x'+(str(affected)+'/*').encode().hex()
+        scan('explicit-file-root-exclusion',affected/'php','FALSE',['--exclude-directories-hex',encoded])
+        many=scope('large-many',{})
+        for number in range(22):
+            os.link(limited/'php',many/('php'+str(number)))
+        summary,_=scan('bounded-large-file-details',many,'UNKNOWN')
+        assert 'UNKNOWN_REASON=22 possible runtime file(s) at or above 512 MiB skipped' in summary
+        assert (artifacts/'bounded-large-file-details-scan.log').read_text().count('Size-limited runtime candidate')==20
+
         # Controlled corpus: exact original forum Bash script and both new modes.
         # Balanced warm runs; this is not a full-machine scan or BigFix timing.
         corpus=scope('corpus',{'php':bins['8.5.11']['php'],'php-cgi':bins['8.5.12']['php-cgi']})
