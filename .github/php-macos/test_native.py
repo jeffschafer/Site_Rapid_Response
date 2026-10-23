@@ -288,6 +288,22 @@ def main():
         assert 'UNKNOWN_REASON=22 possible runtime file(s) at or above 512 MiB skipped' in summary
         assert (artifacts/'bounded-large-file-details-scan.log').read_text().count('Size-limited runtime candidate')==20
 
+        scan('preset-quick-affected', affected, 'TRUE', ['--enumeration-seconds', '1200', '--scan-seconds', '900', '--max-files', '5000000', '--candidate-gb', '30', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '0', '--include-broader-locations', '0', '--include-build-text', '0'])
+        scan('preset-quick-patched', patched, 'FALSE', ['--enumeration-seconds', '1200', '--scan-seconds', '900', '--max-files', '5000000', '--candidate-gb', '30', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '0', '--include-broader-locations', '0', '--include-build-text', '0'])
+        scan('preset-quick-renamed', renamed, 'FALSE', ['--enumeration-seconds', '1200', '--scan-seconds', '900', '--max-files', '5000000', '--candidate-gb', '30', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '0', '--include-broader-locations', '0', '--include-build-text', '0'])
+        scan('preset-quick-limited', limited, 'UNKNOWN', ['--enumeration-seconds', '1200', '--scan-seconds', '900', '--max-files', '5000000', '--candidate-gb', '30', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '0', '--include-broader-locations', '0', '--include-build-text', '0'])
+        scan('preset-normal-affected', affected, 'TRUE', ['--enumeration-seconds', '1800', '--scan-seconds', '1200', '--max-files', '5000000', '--candidate-gb', '40', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '1', '--include-broader-locations', '0', '--include-build-text', '0'])
+        scan('preset-normal-patched', patched, 'FALSE', ['--enumeration-seconds', '1800', '--scan-seconds', '1200', '--max-files', '5000000', '--candidate-gb', '40', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '1', '--include-broader-locations', '0', '--include-build-text', '0'])
+        scan('preset-normal-renamed', renamed, 'TRUE', ['--enumeration-seconds', '1800', '--scan-seconds', '1200', '--max-files', '5000000', '--candidate-gb', '40', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '1', '--include-broader-locations', '0', '--include-build-text', '0'])
+        scan('preset-normal-limited', limited, 'UNKNOWN', ['--enumeration-seconds', '1800', '--scan-seconds', '1200', '--max-files', '5000000', '--candidate-gb', '40', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '1', '--include-broader-locations', '0', '--include-build-text', '0'])
+        scan('preset-deep-affected', affected, 'TRUE', ['--enumeration-seconds', '3600', '--scan-seconds', '1800', '--max-files', '10000000', '--candidate-gb', '60', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '1', '--include-broader-locations', '1', '--include-build-text', '1'])
+        scan('preset-deep-patched', patched, 'FALSE', ['--enumeration-seconds', '3600', '--scan-seconds', '1800', '--max-files', '10000000', '--candidate-gb', '60', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '1', '--include-broader-locations', '1', '--include-build-text', '1'])
+        scan('preset-deep-renamed', renamed, 'TRUE', ['--enumeration-seconds', '3600', '--scan-seconds', '1800', '--max-files', '10000000', '--candidate-gb', '60', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '1', '--include-broader-locations', '1', '--include-build-text', '1'])
+        scan('preset-deep-limited', limited, 'UNKNOWN', ['--enumeration-seconds', '3600', '--scan-seconds', '1800', '--max-files', '10000000', '--candidate-gb', '60', '--max-file-mb', '512', '--cpu-limit', '10', '--include-nonstandard-names', '1', '--include-broader-locations', '1', '--include-build-text', '1'])
+        invalid=root/'invalid-limit';invalid.mkdir();invalid.chmod(0o700)
+        run(['/bin/bash',work/'scan-macos.sh','--engine',work/'yr','--rules',work/'php-detect.yar','--output',invalid,'--root',patched,'--max-files','10000001'],allowed=(2,))
+        record('file ceiling rejects 10000001')
+
         # Controlled corpus: exact original forum Bash script and both new modes.
         # Balanced warm runs; this is not a full-machine scan or BigFix timing.
         corpus=scope('corpus',{'php':bins['8.5.11']['php'],'php-cgi':bins['8.5.12']['php-cgi']})
